@@ -1,75 +1,143 @@
 package com.company.musicthesis;
 
 import graphics.core.*;
-import graphics.extras.OBJGeometry;
-import graphics.geometry.Geometry;
-import graphics.geometry.RectangularPrismGeometry;
-import graphics.geometry.SphereGeometry;
-import graphics.material.Material;
-import graphics.material.SurfaceMaterial;
-import graphics.material.TextureMaterial;
-import graphics.math.Vector;
+import graphics.core.MovementRig;
+import graphics.extras.*;
+import graphics.geometry.*;
+import graphics.material.*;
+import graphics.math.*;
+import graphics.light.*;
+
 import org.jfugue.midi.MidiFileManager;
 import org.jfugue.pattern.Pattern;
 import org.jfugue.player.Player;
 import javax.sound.midi.*;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Random;
 
+import static org.lwjgl.glfw.GLFW.*;
 
-public class Thesis extends Base {
-    public static CustomReceiver synthRcvr = new CustomReceiver();//Create a customReceiver object
-    public static Transmitter seqTrans;
-    public static Synthesizer synth;
-    public static Sequencer sequencer;
-    public static Sequence sequence;
-
-    public static Player player = new Player(); //The music player
-
-    SurfaceMaterial[] materialArray;
+public class Thesis extends Base
+{
+    public Mesh[] noteMeshArray;
+    public int currentNoteIndex;
+    public Vector noteOnColor  = new Vector(1.00, 0.50, 0.50);
+    public Vector noteOffColor = new Vector(0.25, 0.00, 0.50);
 
     public Renderer renderer;
     public Scene scene;
     public Camera camera;
-    public Mesh mesh, sky;
     public MovementRig rig;
 
-    public Mesh tCleff, staff, staff2, staff3, staff4, staff5;
-    public Material world, matt, trebleMatt;
-    public Geometry block1, trebleCleff, round, sphere, sphere2, sphere3, sphere4, musicNote;
-
-    public int currentKeyID;
-    public int previousKeyID = -1; //These two values will be used to change the colors of the note, -1 for the first cycle of update
-
-    public int meshIncrementer = 0; //This will work with currentKeyID/previousKeyID, will change the color of a note when a new key plays
-
-    // Create object of Music Mathin
-    public MusicMathin mathy = new MusicMathin();
-
-    public Mesh[] meshArray;
-
-    public float turnSpeed;
-
-    public Random rand = new Random();
-
-
-    public static void main(String[] args) throws InvalidMidiDataException, IOException, MidiUnavailableException, InterruptedException {
-
-        //Messing around 3(IT WORKED)
-
+    public static void main(String[] args) throws InvalidMidiDataException, MidiUnavailableException, IOException, InterruptedException {
         Base test = new Thesis();
         test.setWindowSize(800, 800);
         test.run();
-//        while(sequencer.isOpen()){
-//            System.out.println(synthRcvr.returnKey());
-//            Thread.sleep(10); //NOT NEEDED
-//        }
     }
 
-    public void initialize() throws InvalidMidiDataException, IOException, MidiUnavailableException, InterruptedException { //I swear if this works.... Imma be so HAPPPPPPPPPY, UPDATE I AM HAPPPPPPPPY
-        // Set up the basics:
+    public Pattern generateMusic()
+    {
+        // return new Pattern("T240 V0 I[Violin] D5w G5q A5q B5q"); // use different length pattern for testing staff width formula
+        return new Pattern("T120 V0 I[Violin] D5h G5q A5q B5q C6q D6i D6i D6i D6i G6h");
+    }
+
+    public void exportMidiFile(Pattern pattern, String midiFileName)
+    {
+        try
+        {
+            File file = new File(midiFileName);
+            MidiFileManager.savePatternToMidi(pattern, file); //Convert to mid file
+        }
+        catch(Exception e)
+        {
+            e.printStackTrace();
+        }
+    }
+
+    public List<NoteData> parseMidiFile(String midiFileName) throws InvalidMidiDataException, IOException
+    {
+        File file = new File(midiFileName);
+        Pattern pattern = MidiFileManager.loadPatternFromMidi(file);
+
+        String patternString = pattern.toString();
+        System.out.println("String: " + patternString);
+
+        String[] patternArray = patternString.split(" ");
+        System.out.println( "Array: " + Arrays.toString(patternArray) );
+
+        // pattern array may include some combination of
+        //   tempo (T), voice number (V), and instrument name/number (I);
+        // remove these from the data structure.
+
+        List<NoteData> noteDataList = new ArrayList<NoteData>();
+
+        for(int i = 0; i < patternArray.length; i++ )
+        {
+            char firstChar = patternArray[i].charAt(0);
+            if (firstChar == 'T' || firstChar == 'V' || firstChar == 'I')
+                continue; // skip to next iteration of for loop
+
+            NoteData noteData = new NoteData( patternArray[i] );
+            noteDataList.add( noteData );
+
+            String test = noteData.letter + noteData.octave;
+            System.out.println("Parsed Note: " + test);
+        }
+
+        return noteDataList;
+    }
+
+    /*
+     * determine the index corresponding to the position of a note;
+     * use for calculating Y-coordinate of note position on treble clef staff;
+     * anything out of range returns -1.
+
+     10 G6
+      9 F6 ----------
+      8 E6
+      7 D6 ----------
+      6 C6
+      5 B5 ----------
+      4 A5
+      3 G5 ----------
+      2 F5
+      1 E5 ----------
+      0 D5
+
+    */
+    public double trebleStaffPosition(NoteData noteData)
+    {
+        String[] noteNameArray = {"D5", "E5", "F5", "G5", "A5", "B5", "C6", "D6", "E6", "F6", "G6"};
+        List<String> noteNameList = Arrays.asList(noteNameArray);
+        String noteName = noteData.letter + noteData.octave;
+        return noteNameList.indexOf(noteName);
+    }
+
+    public void initialize()
+    {
+        // generate music
+        Pattern musicPattern = generateMusic();
+
+        // export MIDI file
+        String midiFileName = "midi/test2.mid";
+        exportMidiFile(musicPattern, midiFileName);
+
+        // re-import MIDI file + data in a user-friendly format:
+        List<NoteData> noteDataList = new ArrayList<NoteData>();
+        try
+        {
+            noteDataList = parseMidiFile(midiFileName);
+        }
+        catch (Exception ex) // Invalid MIDI data exception
+        {
+            ex.printStackTrace();
+        }
+
+        // Set up the basics for 3D graphics:
         renderer = new Renderer();
         scene = new Scene();
         camera = new Camera();
@@ -81,224 +149,162 @@ public class Thesis extends Base {
 
         camera.setPosition(new Vector(2, -2, 30));
 
-        int songLength = noteArrayWithoutLength().length; //Return the length of the song
+        // adding lights; required IF using LambertMaterial
+        Light ambientLight = new AmbientLight( new Vector(0.5, 0.5, 0.5) );
+        scene.add(ambientLight);
+        Light directionalLight = new DirectionalLight( new Vector(0.8, 0.8, 0.8), new Vector(0.0, -1.0, -0.1) );
+        scene.add(directionalLight);
 
-        //Faiths declaration
-        // Original coordinate
-        double x = songLength; // represents x coordinate value of original staff placement
-        double y = 0; // represents y coordinate value of original staff placement
-        double z = 0; // represents z coordinate value of original staff placement
+        // Stem's visualization helpers
+        scene.add( new AxesHelper(1, 1) );
 
-        // Staff
-        double widthOfStaff = 30 * songLength / 8.0 ;  // dx
-        double heightOfStaff = .1; // dy
-        double depthOfStaff = .1; // dz
-        double spaceOfStaff = 1.15; // dh
-        double staffNumber = 0;
+        // ----------------
+        // | Staff Meshes |
+        // ----------------
 
-        // Note
-        double spaceOfNote = 1; // ds
-        double radiusOfNote = 1; // r
-        double noteNumber = 0; // note number (note 1, note2, note3, note4, etc.)
-        //End
+        double noteWidth   = 1; // the width of a note, also the spacing between notes
+        double noteMarginX = 4;
+        double noteCount   = noteDataList.size();
 
-//———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
-        // | Staff |
-        // ——————————
-        // Geometric Shape
-        Geometry block1 = new RectangularPrismGeometry(widthOfStaff, heightOfStaff, depthOfStaff);
-        Geometry block2 = new RectangularPrismGeometry(widthOfStaff, heightOfStaff, depthOfStaff);
-        Geometry block3 = new RectangularPrismGeometry(widthOfStaff, heightOfStaff, depthOfStaff);
-        Geometry block4 = new RectangularPrismGeometry(widthOfStaff, heightOfStaff, depthOfStaff);
-        // Material
-        Texture tyeDye = new Texture("src/main/java/images/istockphoto-184372785-170667a.jpg");
-        Material matt = new TextureMaterial(tyeDye);
-        // Create Mesh
-        staff = new Mesh(block1, matt);
-        staff2 = new Mesh(block2, matt);
-        staff3 = new Mesh(block3, matt);
-        staff4 = new Mesh(block4, matt);
-        staff5 = new Mesh(block4, matt);
-        // Find the position
-        staff.setPosition(new Vector(x, mathy.findYval(1, y, spaceOfStaff, heightOfStaff), 0));
-        staff2.setPosition(new Vector(x, mathy.findYval(2,y, spaceOfStaff, heightOfStaff), 0));
-        staff3.setPosition(new Vector(x, mathy.findYval(3,y, spaceOfStaff, heightOfStaff), 0));
-        staff4.setPosition(new Vector(x, mathy.findYval(4,y, spaceOfStaff, heightOfStaff), 0));
-        staff5.setPosition(new Vector(x, mathy.findYval(5,y, spaceOfStaff, heightOfStaff), 0));
-        // Add Mesh to Scene
-        scene.add(staff);
-        scene.add(staff2);
-        scene.add(staff3);
-        scene.add(staff4);
-        scene.add(staff5);
+        double staffWidth  = noteMarginX + noteCount * noteWidth * 2;
+        double staffHeight = 0.2;
+        double staffDepth  = 0.01; // super thin, so that noteMeshes which intersect the line overlap it
+        double staffVerticalSpacing = 1.0; // chosen based on dimensions of noteMesh
 
-        // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+        Geometry staffGeometry = new BoxGeometry(staffWidth, staffHeight, staffDepth);
+        Texture  staffTexture  = new Texture("images/grid.png");
+        Material staffMaterial = new TextureMaterial(staffTexture);
 
-        // Notes:
-        // Geometric Shape
-//———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
-        // | Notes |
-        // ——————————
-        // Geometric Shape
-        Geometry sphere = new OBJGeometry("src/main/java/models/WholeNote.obj");
-        // Create material
-        String[] noteArray = noteArrayWithoutLength();
-        materialArray = new SurfaceMaterial[noteArray.length - 1];
-        for(int i = 0; i < materialArray.length; i++){ //Create array of surface materials.
-            materialArray[i] = new SurfaceMaterial();
-            materialArray[i].uniforms.get("baseColor").data = new Vector(0.0, 0.0, 0.0);
-            Mesh note = new Mesh(sphere, materialArray[i]);
-            note.scale(.25, true);
-            note.rotateY(Math.PI/2, true);
-            double x1 = mathy.findXval( i, spaceOfNote, -5, radiusOfNote);
-            double noteIndex = mathy.whichStaff(noteArray[i]);
-            System.out.println(noteIndex);
-            double y1 = mathy.exactStaffSpacing(noteIndex, heightOfStaff, spaceOfStaff, y) - 0.5;
-            double z1 = 1.75;
-            note.setPosition(new Vector(x1, y1, z1));
-            scene.add(note);
+        // for convenience, position bottom-left corner of staff at (0,0,0);
+        //   requires shifting staffMesh origin (center) to the right.
+        for (int i = 0; i < 5; i++)
+        {
+            Mesh staffMesh = new Mesh(staffGeometry, staffMaterial);
+            staffMesh.setPosition( new Vector(staffWidth/2, i * staffVerticalSpacing, 0) );
+            scene.add(staffMesh);
         }
 
-        // Create Mesh
-        //C5W D5W E5W E4W F4W G4W
-        // Scale Mesh
-        // Find note height on y-axis && Find the position
-        // Add Mesh to Scene
+        // --------------------
+        // | Treble Clef Mesh |
+        // --------------------
 
+        Geometry trebleClefGeometry = new OBJGeometry("src/main/java/models/TrebleClef01.obj");
+        Texture  trebleClefTexture  = new Texture("src/main/java/images/lava.jpg");
+        // Material trebleClefMaterial = new TextureMaterial(trebleClefTexture);
+        Material trebleClefMaterial = new LambertMaterial(null); // null -or- Texture;
+        trebleClefMaterial.uniforms.get("baseColor").data = noteOffColor;
+        Mesh trebleClefMesh = new Mesh(trebleClefGeometry, trebleClefMaterial);
+        trebleClefMesh.rotateY(Math.PI/2, true);
+        trebleClefMesh.translate(0, -1.5, 0, true);
+        scene.add(trebleClefMesh);
 
-        // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
+        // ---------------
+        // | Note Meshes |
+        // ---------------
 
-        // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
-        // | Cleff |
-        // ——————————
-        // Geometric Shape
-        Geometry trebleCleff = new OBJGeometry("src/main/java/images/ClefNote.obj");
-        // Material
-        Material trebleMatt = new TextureMaterial(new Texture("src/main/java/images/nightStar2.png"));
-        // Add to scene & scale to size
-        tCleff = new Mesh(trebleCleff, trebleMatt);
-        tCleff.translate(-11.2, -2.823832783728, 1, true);
-        tCleff.scale(2.5, true);
-        tCleff.rotateY(45, true);
-        scene.add(tCleff);
+        // Improved QuarterNote.obj model:
+        //   - lower left corner at (0, 0, 0)
+        //   - dimensions approx. 1 * 2 * 0.1
+        Geometry noteGeometry = new OBJGeometry("src/main/java/models/WholeNote.obj");
 
-        // ———————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————————
-        // | Background |
-        // ——————————————
-        // Geometric Shape
-        Geometry round = new SphereGeometry();
-        // Material
-        Material world = new TextureMaterial(new Texture("src/main/java/images/yeet.jpg"));
-        // Create Mesh
-        sky = new Mesh(round, world); // Create sky object
-        // Scale Mesh
-        sky.scale(500, true); // Scale it for the world to see
-        // Add Mesh to Scene
-        scene.add(sky); //Add sky
+        // array is defined at class level for global access
+        noteMeshArray = new Mesh[noteDataList.size()];
 
-        turnSpeed = (float)Math.toRadians(180);//Used for box rotation in future
+        for(int i = 0; i < noteDataList.size(); i++)
+        {
+            Material noteMaterial = new SurfaceMaterial();
+            noteMaterial.uniforms.get("baseColor").data = noteOffColor;
 
-        //"src/main/java/images/sky-earth.jpg"
-        Thread.sleep(500);
-        sequencer = MidiSystem.getSequencer();
-        sequence = MidiSystem.getSequence(new File("src/test.mid"));
-        Sequencer sequencer = MidiSystem.getSequencer();
-        seqTrans = sequencer.getTransmitter();
-        seqTrans.setReceiver((Receiver) synthRcvr); //Cast it
-        sequencer.open(); //Open this in the initialize class, will always stay open
-        sequencer.setSequence(sequence);
-        sequencer.start();
+            Mesh noteMesh = new Mesh(noteGeometry, noteMaterial);
+            noteMesh.rotateY(Math.PI/2, true);
+
+            NoteData data = noteDataList.get(i);
+            double x = 4 + 2*i;
+            double y = staffHeight + trebleStaffPosition(data) * staffVerticalSpacing/2.0 - 1;
+            double z = 0;
+            noteMesh.setPosition( new Vector(x,y,z) );
+
+            noteMeshArray[i] = noteMesh;
+            scene.add(noteMesh);
+        }
+
+        // -------------------
+        // | Background Mesh |
+        // -------------------
+
+        Geometry skyGeometry = new SphereGeometry();
+        Texture  skyTexture  = new Texture("images/grid.png");
+        Material skyMaterial = new TextureMaterial(skyTexture);
+        Mesh     skyMesh     = new Mesh(skyGeometry, skyMaterial);
+        skyMesh.scale(500, true);
+        scene.add(skyMesh);
+
+        // -------------------
+        // | Play the music! |
+        // -------------------
+
+        currentNoteIndex = 0;
+        try
+        {
+            File midiFile = new File(midiFileName);
+            Sequence sequence = MidiSystem.getSequence(midiFile);
+            Sequencer sequencer = MidiSystem.getSequencer();
+            Transmitter transmitter = sequencer.getTransmitter();
+            Receiver receiver = new CustomReceiver();
+            transmitter.setReceiver(receiver);
+            sequencer.open();
+            sequencer.setSequence(sequence);
+            sequencer.start();
+        }
+        catch (Exception ex)
+        {
+            ex.printStackTrace();
+        }
     }
 
-    public void update() {
-        float turnAmount = turnSpeed * deltaTime; //Get the Turn amount
+    // written as inner class, since only used here
+    class CustomReceiver implements Receiver
+    {
+        public CustomReceiver() {    }
 
-
-
-         currentKeyID = synthRcvr.returnKey(); //Key as soon as the update method starts
-//        System.out.println("Current Key: " + currentKeyID +
-//                "\nPrevious Key: " + previousKeyID);
-
-        if ((meshIncrementer >= materialArray.length) && (currentKeyID != previousKeyID)) {
-            materialArray[meshIncrementer - 1].uniforms.get("baseColor").data = new Vector(0.0, 0.0, 0.0); //Change last note to white since this is the end of the array
-            meshIncrementer = 0; //Go back to the beginning.
+        public static final int NOTE_ON  = 0x90;
+        public static final int NOTE_OFF = 0x80;
+        @Override
+        public void send(MidiMessage message, long timeStamp)
+        {
+            if (message instanceof ShortMessage)
+            {
+                ShortMessage sm = (ShortMessage) message;
+                if (sm.getCommand() == NOTE_ON)
+                {
+                    noteMeshArray[currentNoteIndex].material.uniforms.get("baseColor").data = noteOnColor;
+                }
+                else if (sm.getCommand() == NOTE_OFF)
+                {
+                    noteMeshArray[currentNoteIndex].material.uniforms.get("baseColor").data = noteOffColor;
+                    currentNoteIndex++;
+                }
+            }
+            else
+            {
+                System.out.println("Other message: " + message.getClass());
+            }
         }
 
-        if(currentKeyID != previousKeyID){ //If true, change the color of the current note and revert previous note to white.
-            materialArray[meshIncrementer].uniforms.get("baseColor").data = new Vector(0.5, 0.5, 1); //Change color to that
-           try {
-               materialArray[meshIncrementer - 1].uniforms.get("baseColor").data = new Vector(0.0, 0.0, 0.0); //Change color to white
-               meshIncrementer += 1; //Increase to next note
-           } catch (IndexOutOfBoundsException e){
-               meshIncrementer += 1; //If meshIncrementer is 0, catch error
-           }
-        }
-
-//        musicBox.material.uniforms.get("baseColor").data = new Vector((synthRcvr.returnKey() % 7 )/10.0,
-//                (synthRcvr.returnKey() % 10 )/10.0,
-//                (synthRcvr.returnKey() % 5 )/10.0); //For changing colors via music
-
-
-
-        previousKeyID = synthRcvr.returnKey(); //Key after the update method is finished
-
-        rig.update(input, deltaTime);
-        renderer.render(scene, camera); //Do the update magic
+        @Override
+        public void close()
+        { }
     }
 
-    public String[] noteArrayWithoutLength() throws InvalidMidiDataException, IOException  {
-        Pattern sheetMusic = MidiFileManager.loadPatternFromMidi(new File("src/test.mid")); //Open the music file
-        String[] fullNoteSheet = sheetMusic.toString().split(" "); //Separate by spaces
-        String[] finalNotes = new String[fullNoteSheet.length - 1]; //This will be the final notes with only notes
-        for(int i = 3; i < fullNoteSheet.length; i++ ){
-            finalNotes[i - 3] = fullNoteSheet[i].substring(0, fullNoteSheet[i].length() - 1); //Remove the note length
-            finalNotes[i - 3] = finalNotes[i-3].replace("b", ""); //Remove the lowercase b
-            System.out.println("For loop Note: " + finalNotes[i-3]);
+    public void update()
+    {
+        if (input.isKeyDown(GLFW_KEY_SPACE))
+        {
+            System.out.println("Hello!");
         }
 
-        return finalNotes; //Remove later
+        rig.update(input, deltaTime);   // update camera controls
+        renderer.render(scene, camera); // render the 3D scene
     }
+
 }
-
-
-
-
-//       MusicGeneratorEnhanced music = new MusicGeneratorEnhanced();
-////
-////        Pattern song = music.createSong(2); //Get song
-//          Pattern song = new Pattern();
-//          song.add("20 V0 I[Violin] Bb3w A3w G3w F3w Eb3w D3w C3w V1 I[Piano] Bb A G F Eb D C F");
-//
-//
-//        music.exportSong(song);
-
-//        // TODO convert the event into a readable/desired output
-//        ControllerEventListener controllerEventListener = System.out::println;
-//
-//
-//        Sequencer sequencer = MidiSystem.getSequencer();
-//        int[] controllersOfInterest = { 1, 2, 4, 8, 16};
-//        sequencer.setSequence(MidiSystem.getSequence(new File("src/test.mid")));
-//        sequencer.open();
-//        sequencer.addControllerEventListener(controllerEventListener, controllersOfInterest);
-//        sequencer.start();
-////        while(sequencer.isRunning()) {
-////            System.out.println(sequencer.c);
-////        }
-//        //sequencer.close();
-
-//test 2
-//        MidiParser parser = new MidiParser(); //Parser
-//        StaccatoParserListener listener = new StaccatoParserListener(); //Staccato?
-//        parser.addParserListener(listener); //Add the listener here
-//        parser.parse(MidiSystem.getSequence(new File("src/test.mid"))); //Get the parser to parse everywhere
-//        Pattern staccatoPattern = listener.getPattern();
-//        System.out.println(staccatoPattern); //Prints out the notes
-//
-//        Player player = new Player(); //Create music player
-//        player.play(staccatoPattern); //Play the cool notes.
-//Test 1
-//        Pattern sheetMusic = MidiFileManager.loadPatternFromMidi(new File("src/test.mid"));
-//        System.out.println(sheetMusic); //This will return the notes of a midi file
-// Initialize:
-

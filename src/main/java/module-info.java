@@ -15,6 +15,7 @@ module com.company.musicthesis {
     requires org.lwjgl.opengl;
     requires org.lwjgl.glfw;
     requires org.lwjgl.stb;
+    requires graphics3D;
 
     opens com.company.musicthesis to javafx.fxml;
     exports com.company.musicthesis;

@@ -1,6 +1,5 @@
 package com.company.musicthesis;
 
-import graphics.geometry.Geometry;
 import graphics.math.Vector;
 
 import java.util.Objects;

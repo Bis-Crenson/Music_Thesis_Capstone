@@ -98,7 +98,7 @@ Probability will be tricky...
         songLength = 0.0; //Refresh just in case
         String[] noteNames = {"B5", "C5", "D5", "E5", "F5", "G5", "A6", "B6", "C6", "D6"};
         double[] noteLength = {1}; //Just 8th notes
-        String melody = "V1 I[Piano] "; //melody which is a string, will be played with rhythm and beat
+        String melody = "T120 V1 I[Piano] "; //melody which is a string, will be played with rhythm and beat
         int count = 0;
         for(Note[] melodyArray : melodies){ //Melodyarray will be the entire array of notes per melody.
             startingIndex  = rand.nextInt(melodyArray.length); //Get a random index value based off the length of the given note array, will be the starting value and will change throughout
@@ -259,7 +259,7 @@ Probability will be tricky...
             baseLength += baseRepeat;
         }
         baseLength -= 1;
-        System.out.println(p0); //Print for debugging
+        //System.out.println(p0); //Print for debugging
         System.out.println(baseLength);
         return p0; //Return the pattern
     }
@@ -278,9 +278,9 @@ Probability will be tricky...
 //        player.play(song); //Uncomment to play
 //        return song;
         Pattern songNoRhythm = new Pattern(getMelody()); //This has no Rhythm
-        System.out.println(songNoRhythm);
+       // System.out.println(songNoRhythm);
 //        song.add(getMelody()); //Add the song to the pattern
-        player.play(songNoRhythm); //Uncomment to play
+        //player.play(songNoRhythm); //Uncomment to play
         return songNoRhythm;
     }
 

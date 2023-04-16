@@ -1,48 +1,51 @@
 package com.company.musicthesis;
 
-import graphics.core.*;
-import graphics.core.MovementRig;
 import graphics.extras.*;
-import graphics.geometry.*;
-import graphics.material.*;
-import graphics.math.*;
-import graphics.light.*;
 
+
+import graphics.extras.AxesHelper;
+import graphics.geometry.SphereGeometry;
+import graphics.material.TextureMaterial;
+import graphics.math.Vector;
 import org.jfugue.midi.MidiFileManager;
 import org.jfugue.pattern.Pattern;
-import org.jfugue.player.Player;
+
 import javax.sound.midi.*;
 
 import java.io.*;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Random;
 
 import static org.lwjgl.glfw.GLFW.*;
 
-public class Thesis extends Base
+public class Thesis extends graphics.core.Base
 {
-    public Mesh[] noteMeshArray;
+    public graphics.core.Mesh[] noteMeshArray;
     public int currentNoteIndex;
-    public Vector noteOnColor  = new Vector(1.00, 0.50, 0.50);
-    public Vector noteOffColor = new Vector(0.25, 0.00, 0.50);
+    public graphics.math.Vector noteOnColor  = new graphics.math.Vector(1.00, 0.50, 0.50);
+    public graphics.math.Vector noteOffColor = new graphics.math.Vector(0.25, 0.00, 0.50);
 
-    public Renderer renderer;
-    public Scene scene;
-    public Camera camera;
-    public MovementRig rig;
+    public graphics.core.Renderer renderer;
+    public graphics.core.Scene scene;
+    public graphics.core.Camera camera;
+    public graphics.core.MovementRig rig;
 
     public static void main(String[] args) throws InvalidMidiDataException, MidiUnavailableException, IOException, InterruptedException {
-        Base test = new Thesis();
-        test.setWindowSize(800, 800);
+        graphics.core.Base test = new Thesis();
+        //Base.windowWidth = 1024;
+        //Base.windowHeight = 512;
+        test.setWindowSize(1024, 1024);
         test.run();
+        // test.run(1024, 512);
     }
 
     public Pattern generateMusic()
     {
         // return new Pattern("T240 V0 I[Violin] D5w G5q A5q B5q"); // use different length pattern for testing staff width formula
-        return new Pattern("T120 V0 I[Violin] D5h G5q A5q B5q C6q D6i D6i D6i D6i G6h");
+        //return new Pattern("T120 V0 I[Violin] D5h G5q A5q B5q C6q D6i D6i D6i D6i G6h");
+        MusicGeneratorEnhanced musicGen = new MusicGeneratorEnhanced();
+        return musicGen.createSong(1);
     }
 
     public void exportMidiFile(Pattern pattern, String midiFileName)
@@ -111,7 +114,7 @@ public class Thesis extends Base
     */
     public double trebleStaffPosition(NoteData noteData)
     {
-        String[] noteNameArray = {"D5", "E5", "F5", "G5", "A5", "B5", "C6", "D6", "E6", "F6", "G6"};
+        String[] noteNameArray = {"B5", "C5", "D5", "E5", "F5", "G5", "A6", "B6", "C6", "D6" };
         List<String> noteNameList = Arrays.asList(noteNameArray);
         String noteName = noteData.letter + noteData.octave;
         return noteNameList.indexOf(noteName);
@@ -123,7 +126,7 @@ public class Thesis extends Base
         Pattern musicPattern = generateMusic();
 
         // export MIDI file
-        String midiFileName = "midi/test2.mid";
+        String midiFileName = "src/test.mid";
         exportMidiFile(musicPattern, midiFileName);
 
         // re-import MIDI file + data in a user-friendly format:
@@ -138,22 +141,23 @@ public class Thesis extends Base
         }
 
         // Set up the basics for 3D graphics:
-        renderer = new Renderer();
-        scene = new Scene();
-        camera = new Camera();
+        renderer = new graphics.core.Renderer();
+        scene = new graphics.core.Scene();
+        camera = new graphics.core.Camera();
 
-        rig = new MovementRig(20, 45);
+
+        rig = new graphics.core.MovementRig(20, 45);
         rig.attach(camera);
-        rig.setPosition(new Vector(0.5, 1, 4));
+        rig.setPosition(new graphics.math.Vector(0.5, 1, 4));
         scene.add(rig);
 
-        camera.setPosition(new Vector(2, -2, 30));
+        camera.setPosition(new graphics.math.Vector(2, -2, 30));
 
-        // adding lights; required IF using LambertMaterial
-        Light ambientLight = new AmbientLight( new Vector(0.5, 0.5, 0.5) );
-        scene.add(ambientLight);
-        Light directionalLight = new DirectionalLight( new Vector(0.8, 0.8, 0.8), new Vector(0.0, -1.0, -0.1) );
-        scene.add(directionalLight);
+//        // adding lights; required IF using LambertMaterial
+//        Light ambientLight = new AmbientLight( new graphics.math.Vector(0.5, 0.5, 0.5) );
+//        scene.add(ambientLight);
+//        Light directionalLight = new DirectionalLight( new graphics.math.Vector(0.8, 0.8, 0.8), new graphics.math.Vector(0.0, -1.0, -0.1) );
+//        scene.add(directionalLight);
 
         // Stem's visualization helpers
         scene.add( new AxesHelper(1, 1) );
@@ -171,16 +175,16 @@ public class Thesis extends Base
         double staffDepth  = 0.01; // super thin, so that noteMeshes which intersect the line overlap it
         double staffVerticalSpacing = 1.0; // chosen based on dimensions of noteMesh
 
-        Geometry staffGeometry = new BoxGeometry(staffWidth, staffHeight, staffDepth);
-        Texture  staffTexture  = new Texture("images/grid.png");
-        Material staffMaterial = new TextureMaterial(staffTexture);
+        graphics.geometry.Geometry staffGeometry = new graphics.geometry.BoxGeometry(staffWidth, staffHeight, staffDepth);
+        graphics.core.Texture staffTexture  = new graphics.core.Texture("images/grid.png");
+        graphics.material.Material staffMaterial = new graphics.material.TextureMaterial(staffTexture);
 
         // for convenience, position bottom-left corner of staff at (0,0,0);
         //   requires shifting staffMesh origin (center) to the right.
         for (int i = 0; i < 5; i++)
         {
-            Mesh staffMesh = new Mesh(staffGeometry, staffMaterial);
-            staffMesh.setPosition( new Vector(staffWidth/2, i * staffVerticalSpacing, 0) );
+            graphics.core.Mesh staffMesh = new graphics.core.Mesh(staffGeometry, staffMaterial);
+            staffMesh.setPosition( new graphics.math.Vector(staffWidth/2, i * staffVerticalSpacing, 0) );
             scene.add(staffMesh);
         }
 
@@ -188,12 +192,12 @@ public class Thesis extends Base
         // | Treble Clef Mesh |
         // --------------------
 
-        Geometry trebleClefGeometry = new OBJGeometry("src/main/java/models/TrebleClef01.obj");
-        Texture  trebleClefTexture  = new Texture("src/main/java/images/lava.jpg");
-        // Material trebleClefMaterial = new TextureMaterial(trebleClefTexture);
-        Material trebleClefMaterial = new LambertMaterial(null); // null -or- Texture;
+        graphics.geometry.Geometry trebleClefGeometry = new graphics.extras.OBJGeometry("src/main/java/models/TrebleClef.obj");
+        graphics.core.Texture trebleClefTexture  = new graphics.core.Texture("src/main/java/images/lava.jpg");
+        graphics.material.Material trebleClefMaterial = new graphics.material.TextureMaterial(trebleClefTexture);
+       // Material trebleClefMaterial = new LambertMaterial(null); // null -or- Texture;
         trebleClefMaterial.uniforms.get("baseColor").data = noteOffColor;
-        Mesh trebleClefMesh = new Mesh(trebleClefGeometry, trebleClefMaterial);
+        graphics.core.Mesh trebleClefMesh = new graphics.core.Mesh(trebleClefGeometry, trebleClefMaterial);
         trebleClefMesh.rotateY(Math.PI/2, true);
         trebleClefMesh.translate(0, -1.5, 0, true);
         scene.add(trebleClefMesh);
@@ -205,17 +209,17 @@ public class Thesis extends Base
         // Improved QuarterNote.obj model:
         //   - lower left corner at (0, 0, 0)
         //   - dimensions approx. 1 * 2 * 0.1
-        Geometry noteGeometry = new OBJGeometry("src/main/java/models/WholeNote.obj");
+        graphics.geometry.Geometry noteGeometry = new graphics.extras.OBJGeometry("src/main/java/models/QuarterNote.obj");
 
         // array is defined at class level for global access
-        noteMeshArray = new Mesh[noteDataList.size()];
+        noteMeshArray = new graphics.core.Mesh[noteDataList.size()];
 
         for(int i = 0; i < noteDataList.size(); i++)
         {
-            Material noteMaterial = new SurfaceMaterial();
+            graphics.material.Material noteMaterial = new graphics.material.SurfaceMaterial();
             noteMaterial.uniforms.get("baseColor").data = noteOffColor;
 
-            Mesh noteMesh = new Mesh(noteGeometry, noteMaterial);
+            graphics.core.Mesh noteMesh = new graphics.core.Mesh(noteGeometry, noteMaterial);
             noteMesh.rotateY(Math.PI/2, true);
 
             NoteData data = noteDataList.get(i);
@@ -232,10 +236,10 @@ public class Thesis extends Base
         // | Background Mesh |
         // -------------------
 
-        Geometry skyGeometry = new SphereGeometry();
-        Texture  skyTexture  = new Texture("images/grid.png");
-        Material skyMaterial = new TextureMaterial(skyTexture);
-        Mesh     skyMesh     = new Mesh(skyGeometry, skyMaterial);
+        graphics.geometry.Geometry skyGeometry = new SphereGeometry();
+        graphics.core.Texture skyTexture  = new graphics.core.Texture("src/main/java/images/yeet.jpg");
+        graphics.material.Material skyMaterial = new TextureMaterial(skyTexture);
+        graphics.core.Mesh skyMesh     = new graphics.core.Mesh(skyGeometry, skyMaterial);
         skyMesh.scale(500, true);
         scene.add(skyMesh);
 

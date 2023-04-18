@@ -1,5 +1,7 @@
 package com.company.musicthesis;
 
+import graphics.core.Mesh;
+import graphics.core.Texture;
 import graphics.extras.*;
 
 
@@ -30,6 +32,8 @@ public class Thesis extends graphics.core.Base
     public graphics.core.Scene scene;
     public graphics.core.Camera camera;
     public graphics.core.MovementRig rig;
+
+    public Mesh snowFall;
 
     public static void main(String[] args) throws InvalidMidiDataException, MidiUnavailableException, IOException, InterruptedException {
         graphics.core.Base test = new Thesis();
@@ -237,7 +241,7 @@ public class Thesis extends graphics.core.Base
         // -------------------
 
         graphics.geometry.Geometry skyGeometry = new SphereGeometry();
-        graphics.core.Texture skyTexture  = new graphics.core.Texture("src/main/java/images/yeet.jpg");
+        graphics.core.Texture skyTexture  = new graphics.core.Texture("src/main/java/images/StormySkybox.jpeg");
         graphics.material.Material skyMaterial = new TextureMaterial(skyTexture);
         graphics.core.Mesh skyMesh     = new graphics.core.Mesh(skyGeometry, skyMaterial);
         skyMesh.scale(500, true);
@@ -264,6 +268,23 @@ public class Thesis extends graphics.core.Base
         {
             ex.printStackTrace();
         }
+
+
+        //snow test
+        snowFall = new ParticleSystem( 1000000,
+                new Texture("src/main/java/images/fluffy.png") );
+        snowFall.material.uniforms.get("minPosition").data = new Vector(-50, 5, -50);
+        snowFall.material.uniforms.get("maxPosition").data = new Vector( 150, 5,  50);
+        snowFall.material.uniforms.get("minSpeed").data = 0.5f;
+        snowFall.material.uniforms.get("maxSpeed").data = 1.5f;
+        snowFall.material.uniforms.get("minAge").data = 6.0f;
+        snowFall.material.uniforms.get("maxAge").data = 18.0f;
+        // slightly different fall directions
+        snowFall.material.uniforms.get("minGravity").data = new Vector(-0.1, -1, -0.1);
+        snowFall.material.uniforms.get("maxGravity").data = new Vector( 0.1, -1,  0.1);
+        // mesh.translate( 0,1,0, true );
+        scene.add(snowFall);
+
     }
 
     // written as inner class, since only used here
@@ -302,6 +323,7 @@ public class Thesis extends graphics.core.Base
 
     public void update()
     {
+        snowFall.material.uniforms.get("time").data = time; //Update snow fall
         if (input.isKeyDown(GLFW_KEY_SPACE))
         {
             System.out.println("Hello!");

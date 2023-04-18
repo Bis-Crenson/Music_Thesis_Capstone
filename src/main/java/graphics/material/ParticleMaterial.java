@@ -10,8 +10,8 @@ public class ParticleMaterial extends Material
     public ParticleMaterial(Texture texture)
     {
         super(
-                "src/graphics/shaders/particle.vert",
-                "src/graphics/shaders/particle.frag"  );
+                "src/main/java/graphics/shaders/particle.vert",
+                "src/main/java/graphics/shaders/particle.frag"  );
 
         drawStyle = GL_POINTS;
 

@@ -118,7 +118,8 @@ public class Thesis extends graphics.core.Base
     */
     public double trebleStaffPosition(NoteData noteData)
     {
-        String[] noteNameArray = {"B5", "C5", "D5", "E5", "F5", "G5", "A6", "B6", "C6", "D6" };
+        //String[] noteNameArray = {"B5", "C5", "D5", "E5", "F5", "G5", "A6", "B6", "C6", "D6" };
+        String[] noteNameArray = {"C5", "D5", "E5", "F5", "G5", "B5", "C6", "D6", "A6", "B6" };
         List<String> noteNameList = Arrays.asList(noteNameArray);
         String noteName = noteData.letter + noteData.octave;
         return noteNameList.indexOf(noteName);
